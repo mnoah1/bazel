@@ -28,6 +28,7 @@ import com.google.devtools.build.lib.profiler.Profiler;
 import com.google.devtools.build.lib.profiler.ProfilerTask;
 import com.google.devtools.build.lib.profiler.SilentCloseable;
 import com.google.devtools.build.lib.vfs.OutputService.RewoundActionSynchronizer;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
@@ -49,6 +50,7 @@ final class RemoteRewoundActionSynchronizer implements RewoundActionSynchronizer
   private final RemoteActionInputFetcher actionInputFetcher;
   private final ConcurrentHashMap<ActionExecutionMetadata, Cancellable> outputUploadTasks =
       new ConcurrentHashMap<>();
+  private final Set<ActionExecutionMetadata> rewoundActions = ConcurrentHashMap.newKeySet();
 
   // A single coarse lock is used to synchronize rewound actions (writers) and both rewound and
   // non-rewound actions (readers) as long as no rewound action has attempted to prepare for its
@@ -137,10 +139,15 @@ final class RemoteRewoundActionSynchronizer implements RewoundActionSynchronizer
     if (!wasRewound) {
       return () -> {};
     }
+    rewoundActions.add(action);
     try (SilentCloseable c =
         Profiler.instance().profile(ProfilerTask.ACTION_LOCK, "action.enterActionPreparation")) {
       return enterActionPreparationForRewinding(action);
     }
+  }
+
+  boolean wasRewound(ActionExecutionMetadata action) {
+    return rewoundActions.contains(action);
   }
 
   private SilentCloseable enterActionPreparationForRewinding(Action action)

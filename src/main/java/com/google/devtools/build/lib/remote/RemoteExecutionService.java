@@ -969,12 +969,21 @@ public class RemoteExecutionService {
   }
 
   private boolean shouldUseMetadataOnlyRecord(RemoteAction action) {
-    return remoteOptions.remoteOutputsMode == RemoteOutputsMode.MINIMAL
+    return !wasRewound(action)
+        && remoteOptions.remoteOutputsMode == RemoteOutputsMode.MINIMAL
         && action
             .getSpawn()
             .getExecutionInfo()
             .containsKey(ExecutionRequirements.NO_REMOTE_CACHE_OUTPUT_UPLOAD)
         && getInMemoryOutputPath(action.getSpawn()) == null;
+  }
+
+  private boolean wasRewound(RemoteAction action) {
+    return outputService instanceof RemoteOutputService remoteOutputService
+        && remoteOutputService.getRewoundActionSynchronizer()
+            instanceof RemoteRewoundActionSynchronizer remoteRewoundActionSynchronizer
+        && remoteRewoundActionSynchronizer.wasRewound(
+            action.getRemoteActionExecutionContext().getSpawnOwner());
   }
 
   private Action metadataOnlyAction(RemoteAction action) {

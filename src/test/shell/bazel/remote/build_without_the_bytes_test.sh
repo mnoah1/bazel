@@ -129,7 +129,6 @@ function test_metadata_only_action_result_skips_unused_producer() {
   cat > metadata_only/rules.bzl <<EOF
 def _metadata_only_pipeline_impl(ctx):
     intermediate = ctx.actions.declare_file(ctx.label.name + ".intermediate")
-    final = ctx.actions.declare_file(ctx.label.name + ".final")
     ctx.actions.run_shell(
         outputs = [intermediate],
         command = "echo producer >> '${producer_log}'; echo payload > \"\$1\"",
@@ -137,18 +136,25 @@ def _metadata_only_pipeline_impl(ctx):
         mnemonic = "MetadataOnlyProducer",
         execution_requirements = {"no-sandbox": ""},
     )
-    ctx.actions.run_shell(
-        inputs = [intermediate, ctx.file.mode],
-        outputs = [final],
-        command = "cat \"\$1\" \"\$2\" > \"\$3\"",
-        arguments = [intermediate.path, ctx.file.mode.path, final.path],
-        mnemonic = "MetadataOnlyConsumer",
-    )
-    return [DefaultInfo(files = depset([final]))]
+    finals = []
+    for i in range(ctx.attr.consumer_count):
+        final = ctx.actions.declare_file(ctx.label.name + ".%d.final" % i)
+        ctx.actions.run_shell(
+            inputs = [intermediate, ctx.file.mode],
+            outputs = [final],
+            command = "cat \"\$1\" \"\$2\" > \"\$3\"",
+            arguments = [intermediate.path, ctx.file.mode.path, final.path],
+            mnemonic = "MetadataOnlyConsumer",
+        )
+        finals.append(final)
+    return [DefaultInfo(files = depset(finals))]
 
 metadata_only_pipeline = rule(
     implementation = _metadata_only_pipeline_impl,
-    attrs = {"mode": attr.label(allow_single_file = True)},
+    attrs = {
+        "consumer_count": attr.int(default = 1),
+        "mode": attr.label(allow_single_file = True),
+    },
 )
 EOF
 
@@ -157,6 +163,7 @@ load(":rules.bzl", "metadata_only_pipeline")
 
 metadata_only_pipeline(
     name = "subject",
+    consumer_count = 32,
     mode = "mode.txt",
 )
 EOF
@@ -164,6 +171,7 @@ EOF
 
   local -a common_options=(
     --remote_download_minimal
+    --jobs=32
     --modify_execution_info=MetadataOnlyProducer=+no-remote-cache-output-upload
     --rewind_lost_inputs
     --enable_bzlmod=false
