@@ -1,4 +1,4 @@
-name: Build Uber Bazel 8.8.0-uber.5
+name: Build Uber Bazel 8.8.0-uber.6
 
 on:
   workflow_dispatch:
@@ -11,7 +11,7 @@ permissions:
 
 env:
   BAZEL_VERSION: 8.8.0
-  RELEASE_NAME: 8.8.0-uber.5
+  RELEASE_NAME: 8.8.0-uber.6
 
 jobs:
   linux:
