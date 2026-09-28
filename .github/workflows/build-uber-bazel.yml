@@ -1,17 +1,17 @@
-name: Build Uber Bazel 8.8.0-uber.6
+name: Build Uber Bazel 8.8.0-uber.7
 
 on:
   workflow_dispatch:
   push:
     branches:
-      - mnoah1/fix-metadata-only-rewind-storm
+      - mnoah1/metadata-only-exclusive-lookup
 
 permissions:
   contents: read
 
 env:
   BAZEL_VERSION: 8.8.0
-  RELEASE_NAME: 8.8.0-uber.6
+  RELEASE_NAME: 8.8.0-uber.7
 
 jobs:
   linux:
