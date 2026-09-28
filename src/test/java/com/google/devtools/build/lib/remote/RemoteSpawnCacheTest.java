@@ -454,6 +454,39 @@ public class RemoteSpawnCacheTest {
   }
 
   @Test
+  public void metadataOnlyActionLooksUpOnlyMetadataRecord() throws Exception {
+    RemoteOptions remoteOptions = Options.getDefaults(RemoteOptions.class);
+    remoteOptions.remoteOutputsMode = RemoteOutputsMode.MINIMAL;
+    RemoteSpawnCache cache = remoteSpawnCacheWithOptions(remoteOptions);
+    SimpleSpawn metadataOnlySpawn =
+        simpleSpawnWithExecutionInfo(
+            ImmutableMap.of(ExecutionRequirements.NO_REMOTE_CACHE_OUTPUT_UPLOAD, ""));
+    when(combinedCache.downloadActionResult(
+            any(RemoteActionExecutionContext.class),
+            any(ActionKey.class),
+            /* inlineOutErr= */ eq(false),
+            /* inlineOutputFiles= */ eq(ImmutableSet.of())))
+        .thenReturn(null);
+    ArgumentCaptor<RemoteActionExecutionContext> contextCaptor =
+        ArgumentCaptor.forClass(RemoteActionExecutionContext.class);
+    ArgumentCaptor<ActionKey> actionKeyCaptor = ArgumentCaptor.forClass(ActionKey.class);
+
+    CacheHandle entry = cache.lookup(metadataOnlySpawn, simplePolicy);
+
+    assertThat(entry.hasResult()).isFalse();
+    verify(combinedCache)
+        .downloadActionResult(
+            contextCaptor.capture(),
+            actionKeyCaptor.capture(),
+            /* inlineOutErr= */ eq(false),
+            /* inlineOutputFiles= */ eq(ImmutableSet.of()));
+    assertThat(contextCaptor.getValue().getReadCachePolicy())
+        .isEqualTo(RemoteActionExecutionContext.CachePolicy.REMOTE_CACHE_ONLY);
+    assertThat(digestUtil.asSpawnLogProto(actionKeyCaptor.getValue()))
+        .isNotEqualTo(simplePolicy.getDigest());
+  }
+
+  @Test
   public void noCacheSpawns() throws Exception {
     // Checks that spawns satisfying Spawns.mayBeCached=false are not looked up in the cache
     // (even if it is a local cache) and that the results/artifacts are not uploaded to the cache.

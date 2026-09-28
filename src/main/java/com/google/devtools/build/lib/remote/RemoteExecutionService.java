@@ -900,16 +900,10 @@ public class RemoteExecutionService {
           ImmutableSet.of(action.getRemotePathResolver().localPathToOutputPath(inMemoryOutputPath));
     }
 
-    CachedActionResult cachedActionResult =
-        combinedCache.downloadActionResult(
-            action.getRemoteActionExecutionContext(),
-            action.getActionKey(),
-            /* inlineOutErr= */ false,
-            inlineOutputFiles);
+    CachedActionResult cachedActionResult = null;
     Digest acceptedMetadataOnlyActionKey = null;
 
-    if (cachedActionResult == null
-        && action.getRemoteActionExecutionContext().getReadCachePolicy().allowRemoteCache()
+    if (action.getRemoteActionExecutionContext().getReadCachePolicy().allowRemoteCache()
         && shouldUseMetadataOnlyRecord(action)) {
       ActionKey metadataActionKey = metadataOnlyActionKey(action);
       if (!rejectedMetadataOnlyActionKeys.contains(metadataActionKey.getDigest())) {
@@ -948,6 +942,13 @@ public class RemoteExecutionService {
           }
         }
       }
+    } else {
+      cachedActionResult =
+          combinedCache.downloadActionResult(
+              action.getRemoteActionExecutionContext(),
+              action.getActionKey(),
+              /* inlineOutErr= */ false,
+              inlineOutputFiles);
     }
 
     if (cachedActionResult == null) {
